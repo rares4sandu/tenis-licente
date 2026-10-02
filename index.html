@@ -1,0 +1,305 @@
+<!doctype html>
+<html lang="ro">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Evidența Tenis – licențe</title>
+<!--
+  Pagina de licente a aplicatiei Evidenta Tenis. Merge doar cu contul de
+  administrator (emailul din firestore.rules, confirmat): fara el, baza de date
+  nu arata si nu lasa sa se schimbe nimic. De aceea pagina poate sta la vedere,
+  pe GitHub Pages - nu contine nimic secret.
+
+  Ce face:
+    +1 lună    licenta merge cu o luna mai mult, de la data de azi sau de la
+               sfarsitul ei, daca e inca valabila
+    Nelimitată licenta merge fara data de sfarsit, pana o scoti (sau o opresti)
+    Oprește    antrenorul trece imediat in „doar citire"
+    Repornește anuleaza oprirea
+    −1 lună    pentru o luna data din greseala
+-->
+<style>
+  :root {
+    --fundal: #f4f6f5; --card: #ffffff; --text: #16211f; --sters: #6b7a76;
+    --contur: #dfe5e3; --accent: #2f6b3a; --accent-text: #ffffff;
+    --rosu: #b3261e; --galben: #9a6700; --verde-deschis: #eaf2ec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --fundal: #111615; --card: #1a2120; --text: #e7eeec; --sters: #9aa8a4;
+      --contur: #2c3533; --accent: #5fb372; --accent-text: #0d1311;
+      --rosu: #f2877f; --galben: #e0b35a; --verde-deschis: #1f2d24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--fundal); color: var(--text);
+         font: 16px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  header { display: flex; justify-content: space-between; align-items: center; gap: 12px;
+           padding: 14px 16px; background: var(--card); border-bottom: 1px solid var(--contur); }
+  header h1 { font-size: 18px; margin: 0; }
+  main { max-width: 680px; margin: 0 auto; padding: 16px; }
+  .card { background: var(--card); border: 1px solid var(--contur); border-radius: 12px;
+          padding: 14px; margin-bottom: 10px; }
+  .card.cere { border: 2px solid var(--galben); }
+  .nume { font-weight: 650; font-size: 17px; }
+  .mic { color: var(--sters); font-size: 13px; overflow-wrap: anywhere; }
+  .stare { margin-top: 6px; font-size: 15px; }
+  .stare.bun { color: var(--accent); }
+  .stare.proba { color: var(--galben); }
+  .stare.rau { color: var(--rosu); font-weight: 600; }
+  .eticheta { display: inline-block; margin-left: 6px; padding: 2px 8px; border-radius: 999px;
+              background: var(--galben); color: var(--card); font-size: 12px; font-weight: 600; }
+  .rand { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+  button { font: inherit; border: 1px solid var(--contur); background: var(--card);
+           color: var(--text); border-radius: 9px; padding: 9px 14px; min-height: 44px; cursor: pointer; }
+  button.accent { background: var(--accent); border-color: var(--accent); color: var(--accent-text); font-weight: 600; }
+  button.rosu { color: var(--rosu); }
+  button.link { border: 0; background: none; color: var(--sters); padding: 6px 4px; min-height: 0; font-size: 14px; }
+  button:disabled { opacity: .5; }
+  input { font: inherit; width: 100%; padding: 11px 12px; border-radius: 9px;
+          border: 1px solid var(--contur); background: var(--card); color: var(--text); margin: 4px 0 12px; }
+  label { font-weight: 600; font-size: 14px; }
+  .mesaj { min-height: 22px; font-size: 14px; }
+  .mesaj.rau { color: var(--rosu); }
+  .gol { color: var(--sters); font-size: 14px; padding: 8px 2px; }
+  .sumar { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .sumar div { background: var(--card); border: 1px solid var(--contur); border-radius: 12px; padding: 10px 12px; }
+  .sumar b { display: block; font-size: 22px; }
+  .sumar span { color: var(--sters); font-size: 13px; }
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--sters); font-size: 14px; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Evidența Tenis · licențe</h1>
+  <button id="iesire" class="link" hidden>Ieși</button>
+</header>
+<main>
+  <section id="login" hidden>
+    <p class="mic">Intră cu contul tău de administrator din aplicație.</p>
+    <form id="form-login">
+      <label for="email">Email</label>
+      <input id="email" type="email" autocomplete="username" required>
+      <label for="parola">Parolă</label>
+      <input id="parola" type="password" autocomplete="current-password" required>
+      <button class="accent" type="submit">Intră</button>
+    </form>
+  </section>
+
+  <section id="neconfirmat" hidden>
+    <p>Adresa de email nu e confirmată încă. Fără confirmare, baza de date nu te recunoaște ca administrator.</p>
+    <div class="rand">
+      <button id="trimite-confirmare" class="accent">Trimite emailul de confirmare</button>
+      <button id="am-confirmat">Am confirmat</button>
+    </div>
+  </section>
+
+  <section id="lista" hidden>
+    <div class="sumar" id="sumar"></div>
+    <input id="cauta" type="search" placeholder="Caută după nume sau email" aria-label="Caută">
+    <div id="carduri"></div>
+  </section>
+
+  <p class="mesaj" id="mesaj" role="status"></p>
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+// Aceleasi valori ca in aplicatie (public/index.template.html). Sunt publice prin
+// natura lor; ce poate face fiecare hotarasc regulile din firestore.rules.
+const firebaseConfig = {
+  apiKey: "AIzaSyBJgJWpJXwIwXeuu_uwIdqI-UzOrggEFJ4",
+  authDomain: "tenis-c5c21.firebaseapp.com",
+  projectId: "tenis-c5c21",
+  storageBucket: "tenis-c5c21.firebasestorage.app",
+  messagingSenderId: "614405453037",
+  appId: "1:614405453037:web:55442e19abc02583a488e4"
+};
+const ADMIN_EMAIL = "raresflorintenis2004@gmail.com";
+// Ca in aplicatie (src/13-license.js) si in reguli.
+const TRIAL_DAYS = 7;
+const WARN_DAYS = 5;
+const DAY = 864e5;
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+const $ = (id) => document.getElementById(id);
+const show = (id, on) => { $(id).hidden = !on; };
+const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const ms = (v) => !v ? 0 : typeof v.toMillis === "function" ? v.toMillis() : new Date(v).getTime() || 0;
+const fmt = (t) => new Date(t).toLocaleDateString("ro-RO", { day: "2-digit", month: "2-digit", year: "numeric" });
+
+function mesaj(text, rau) {
+  $("mesaj").textContent = text || "";
+  $("mesaj").className = rau ? "mesaj rau" : "mesaj";
+}
+
+// Pana cand merge o licenta: cea mai tarzie dintre sfarsitul probei si data platita.
+function sfarsit(l) {
+  const proba = l.trial && l.createdAt ? ms(l.createdAt) + TRIAL_DAYS * DAY : 0;
+  return Math.max(proba, ms(l.until));
+}
+
+function stare(l, acum) {
+  const end = sfarsit(l);
+  const zile = Math.ceil((end - acum) / DAY);
+  const ceruta = ms(l.requestedAt) > Math.max(ms(l.changedAt), acum - 3 * DAY);
+  if (l.stopped) return { fel: "oprita", text: "Oprită" + (l.unlimited ? " (era nelimitată)" : end > acum ? ` (ar fi mers până pe ${fmt(end)})` : ""), clasa: "rau", ordine: 5, ceruta };
+  if (l.unlimited) return { fel: "nelimitata", text: "Nelimitată", clasa: "bun", ordine: 3, ceruta };
+  if (end <= acum) return { fel: "expirata", text: `Expirată din ${fmt(end)}`, clasa: "rau", ordine: 4, ceruta };
+  const platita = ms(l.until) > acum;
+  const zileText = zile === 1 ? "o zi" : `${zile} zile`;
+  if (!platita) return { fel: "proba", text: `În probă până pe ${fmt(end)} (${zileText})`, clasa: "proba", ordine: 1, ceruta };
+  return { fel: "activa", text: `Activă până pe ${fmt(end)} (${zileText})`, clasa: zile <= WARN_DAYS ? "proba" : "bun", ordine: zile <= WARN_DAYS ? 2 : 3, ceruta };
+}
+
+// O luna calendaristica in plus sau in minus (31 ian + 1 luna = 28/29 feb).
+function lunaInPlus(t, n) {
+  const d = new Date(t);
+  const zi = d.getDate();
+  d.setDate(1);
+  d.setMonth(d.getMonth() + n);
+  d.setDate(Math.min(zi, new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()));
+  return d;
+}
+
+let licente = [];
+let oprireLista = null;
+
+function deseneaza() {
+  const acum = Date.now();
+  const cauta = $("cauta").value.trim().toLowerCase();
+  const toate = licente.map((l) => ({ ...l, s: stare(l, acum) }));
+  const numar = (f) => toate.filter((l) => l.s.fel === f).length;
+  $("sumar").innerHTML =
+    `<div><b>${numar("activa") + numar("nelimitata")}</b><span>active${numar("nelimitata") ? ` (${numar("nelimitata")} nelimitate)` : ""}</span></div>` +
+    `<div><b>${numar("proba")}</b><span>în probă</span></div>` +
+    `<div><b>${numar("expirata") + numar("oprita")}</b><span>expirate sau oprite</span></div>` +
+    `<div><b>${toate.filter((l) => l.s.ceruta).length}</b><span>cereri</span></div>`;
+  const vazute = toate
+    .filter((l) => !cauta || `${l.name} ${l.email}`.toLowerCase().includes(cauta))
+    .sort((a, b) => (b.s.ceruta - a.s.ceruta) || (a.s.ordine - b.s.ordine) || (sfarsit(a) - sfarsit(b)));
+  if (!vazute.length) {
+    $("carduri").innerHTML = `<div class="gol">${licente.length ? "Niciun rezultat." : "Niciun cont încă. Când se înscrie cineva, primești notificare pe ntfy."}</div>`;
+    return;
+  }
+  $("carduri").innerHTML = vazute.map((l) => `
+    <div class="card${l.s.ceruta ? " cere" : ""}">
+      <div class="nume">${esc(l.name || "(fără nume)")}${l.s.ceruta ? '<span class="eticheta">a cerut licența</span>' : ""}</div>
+      <div class="mic">${esc(l.email)}</div>
+      <div class="stare ${l.s.clasa}">${l.s.text}</div>
+      <div class="rand">
+        ${l.unlimited ? "" : `<button class="accent" data-fa="luna" data-id="${l.id}">+1 lună</button>`}
+        ${l.stopped
+          ? `<button data-fa="reporneste" data-id="${l.id}">Repornește</button>`
+          : `<button class="rosu" data-fa="opreste" data-id="${l.id}">Oprește</button>`}
+      </div>
+      <details>
+        <summary>Mai mult</summary>
+        <div class="mic" style="margin-top:6px">Cont creat pe ${l.createdAt ? fmt(ms(l.createdAt)) : "–"}${ms(l.until) ? ` · plătită până pe ${fmt(ms(l.until))}` : ""}<br>ID: ${esc(l.id)}</div>
+        <div class="rand">
+          ${l.unlimited
+            ? `<button data-fa="limitata" data-id="${l.id}">Scoate licența nelimitată</button>`
+            : `<button data-fa="nelimitata" data-id="${l.id}">Dă licență nelimitată</button>`}
+          ${ms(l.until) && !l.unlimited ? `<button class="link" data-fa="minus" data-id="${l.id}">−1 lună (o lună dată din greșeală)</button>` : ""}
+        </div>
+      </details>
+    </div>`).join("");
+}
+
+async function actiune(fel, id) {
+  const l = licente.find((x) => x.id === id);
+  if (!l) return;
+  const ref = db.collection("licente").doc(id);
+  const acum = Date.now();
+  const cand = firebase.firestore.FieldValue.serverTimestamp();
+  let schimbare;
+  if (fel === "luna") {
+    schimbare = { until: firebase.firestore.Timestamp.fromDate(lunaInPlus(Math.max(acum, sfarsit(l)), 1)) };
+  } else if (fel === "minus") {
+    schimbare = { until: firebase.firestore.Timestamp.fromDate(lunaInPlus(ms(l.until), -1)) };
+  } else if (fel === "nelimitata") {
+    if (!confirm(`Dai licență nelimitată pentru ${l.name || l.email}? Merge fără dată de sfârșit, până o scoți.`)) return;
+    schimbare = { unlimited: true };
+  } else if (fel === "limitata") {
+    const pana = sfarsit(l) > acum ? `până pe ${fmt(sfarsit(l))}` : "nu mai e valabilă (dă-i o lună dacă vrei să meargă)";
+    if (!confirm(`Scoți licența nelimitată pentru ${l.name || l.email}? Licența lui ${pana}.`)) return;
+    schimbare = { unlimited: false };
+  } else if (fel === "opreste") {
+    if (!confirm(`Oprești licența pentru ${l.name || l.email}? Aplicația lui trece imediat în „doar citire”.`)) return;
+    schimbare = { stopped: true };
+  } else if (fel === "reporneste") {
+    schimbare = { stopped: false };
+  }
+  try {
+    await ref.update({ ...schimbare, changedAt: cand });
+    mesaj(fel === "luna" ? `${l.name || l.email}: licența merge până pe ${fmt(ms(schimbare.until))}.`
+      : fel === "nelimitata" ? `${l.name || l.email}: licență nelimitată.` : "Salvat.");
+  } catch (e) {
+    console.error(e);
+    mesaj("Nu s-a putut salva: " + (e.message || e), true);
+  }
+}
+
+$("carduri").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-fa]");
+  if (!b) return;
+  b.disabled = true;
+  actiune(b.dataset.fa, b.dataset.id).finally(() => { b.disabled = false; });
+});
+$("cauta").addEventListener("input", deseneaza);
+
+$("form-login").addEventListener("submit", (e) => {
+  e.preventDefault();
+  mesaj("Se intră…");
+  auth.signInWithEmailAndPassword($("email").value.trim(), $("parola").value)
+    .then(() => mesaj(""))
+    .catch((err) => mesaj(err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" ? "Email sau parolă greșită." : "Nu s-a putut intra: " + err.message, true));
+});
+$("iesire").addEventListener("click", () => auth.signOut());
+$("trimite-confirmare").addEventListener("click", () => {
+  auth.currentUser.sendEmailVerification()
+    .then(() => mesaj("Ți-am trimis emailul. Deschide linkul din el, apoi apasă „Am confirmat”."))
+    .catch((err) => mesaj(err.message, true));
+});
+$("am-confirmat").addEventListener("click", () => {
+  auth.currentUser.reload().then(() => auth.currentUser.getIdToken(true)).then(() => porneste(auth.currentUser));
+});
+
+function porneste(user) {
+  if (oprireLista) { oprireLista(); oprireLista = null; }
+  show("login", !user);
+  show("iesire", !!user);
+  show("neconfirmat", false);
+  show("lista", false);
+  if (!user) return;
+  if ((user.email || "").toLowerCase() !== ADMIN_EMAIL) {
+    mesaj(`Contul ${user.email} nu e contul de administrator.`, true);
+    return;
+  }
+  if (!user.emailVerified) {
+    show("neconfirmat", true);
+    return;
+  }
+  show("lista", true);
+  mesaj("");
+  oprireLista = db.collection("licente").onSnapshot((snap) => {
+    licente = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: "estimate" }) }));
+    deseneaza();
+  }, (err) => {
+    console.error(err);
+    mesaj("Nu pot citi licențele. Verifică să fie publicate regulile noi în Firebase (firestore.rules).", true);
+  });
+}
+auth.onAuthStateChanged(porneste);
+// Zilele ramase se schimba si fara modificari in baza de date.
+setInterval(() => licente.length && deseneaza(), 60 * 1000);
+</script>
+</body>
+</html>
