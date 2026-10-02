@@ -7,7 +7,7 @@
 <title>Evidența Tenis – licențe</title>
 <!--
   Pagina de licente a aplicatiei Evidenta Tenis. Merge doar cu contul de
-  administrator (emailul din firestore.rules, confirmat): fara el, baza de date
+  administrator (ID-ul din firestore.rules): fara el, baza de date
   nu arata si nu lasa sa se schimbe nimic. De aceea pagina poate sta la vedere,
   pe GitHub Pages - nu contine nimic secret.
 
@@ -89,14 +89,6 @@
     </form>
   </section>
 
-  <section id="neconfirmat" hidden>
-    <p>Adresa de email nu e confirmată încă. Fără confirmare, baza de date nu te recunoaște ca administrator.</p>
-    <div class="rand">
-      <button id="trimite-confirmare" class="accent">Trimite emailul de confirmare</button>
-      <button id="am-confirmat">Am confirmat</button>
-    </div>
-  </section>
-
   <section id="lista" hidden>
     <div class="sumar" id="sumar"></div>
     <input id="cauta" type="search" placeholder="Caută după nume sau email" aria-label="Caută">
@@ -120,7 +112,8 @@ const firebaseConfig = {
   messagingSenderId: "614405453037",
   appId: "1:614405453037:web:55442e19abc02583a488e4"
 };
-const ADMIN_EMAIL = "raresflorintenis2004@gmail.com";
+// Contul administratorului (raresflorintenis2004@gmail.com), dupa ID: la fel in reguli.
+const ADMIN_UID = "AYPcm5quF7SHyCOgdelmN8jwjBv1";
 // Ca in aplicatie (src/13-license.js) si in reguli.
 const TRIAL_DAYS = 7;
 const WARN_DAYS = 5;
@@ -202,7 +195,7 @@ function deseneaza() {
       </div>
       <details>
         <summary>Mai mult</summary>
-        <div class="mic" style="margin-top:6px">Cont creat pe ${l.createdAt ? fmt(ms(l.createdAt)) : "–"}${ms(l.until) ? ` · plătită până pe ${fmt(ms(l.until))}` : ""}<br>ID: ${esc(l.id)}</div>
+        <div class="mic" style="margin-top:6px">Cont creat pe ${l.createdAt ? fmt(ms(l.createdAt)) : "–"}${ms(l.until) ? ` · plătită până pe ${fmt(ms(l.until))}` : ""}<br>${l.acceptedAt ? `De acord cu proba și abonamentul lunar din ${fmt(ms(l.acceptedAt))}` : "Încă n-a fost de acord cu condițiile"}<br>ID: ${esc(l.id)}</div>
         <div class="rand">
           ${l.unlimited
             ? `<button data-fa="limitata" data-id="${l.id}">Scoate licența nelimitată</button>`
@@ -263,28 +256,15 @@ $("form-login").addEventListener("submit", (e) => {
     .catch((err) => mesaj(err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" ? "Email sau parolă greșită." : "Nu s-a putut intra: " + err.message, true));
 });
 $("iesire").addEventListener("click", () => auth.signOut());
-$("trimite-confirmare").addEventListener("click", () => {
-  auth.currentUser.sendEmailVerification()
-    .then(() => mesaj("Ți-am trimis emailul. Deschide linkul din el, apoi apasă „Am confirmat”."))
-    .catch((err) => mesaj(err.message, true));
-});
-$("am-confirmat").addEventListener("click", () => {
-  auth.currentUser.reload().then(() => auth.currentUser.getIdToken(true)).then(() => porneste(auth.currentUser));
-});
 
 function porneste(user) {
   if (oprireLista) { oprireLista(); oprireLista = null; }
   show("login", !user);
   show("iesire", !!user);
-  show("neconfirmat", false);
   show("lista", false);
   if (!user) return;
-  if ((user.email || "").toLowerCase() !== ADMIN_EMAIL) {
+  if (user.uid !== ADMIN_UID) {
     mesaj(`Contul ${user.email} nu e contul de administrator.`, true);
-    return;
-  }
-  if (!user.emailVerified) {
-    show("neconfirmat", true);
     return;
   }
   show("lista", true);
